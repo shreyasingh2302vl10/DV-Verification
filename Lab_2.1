@@ -100,3 +100,16 @@ override void run_phase(uvm_phase phase) {
     // "The test is finished. The simulation can now end."
     phase.drop_objection(this);
 }
+              TESTBENCH
+                  |
+                  | 0x42
+                  | 0x23
+                  | 0x12
+                  | 0x02
+                  ↓
+             ┌─────────┐
+             │   DUT   │
+             └─────────┘
+                  |
+                  ↓
+              OUTPUT
