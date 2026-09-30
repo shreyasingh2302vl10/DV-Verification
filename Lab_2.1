@@ -113,3 +113,14 @@ override void run_phase(uvm_phase phase) {
                   |
                   ↓
               OUTPUT
+ready  → "DUT is ready to receive"
+valid  → "I am sending valid data"
+data   → actual value
+last   → "this is the final value"
+
+        data       valid       last
+        --------------------------------
+        0x42         1           0
+        0x23         1           0
+        0x12         1           0
+        0x02         1           1   ← LAST
