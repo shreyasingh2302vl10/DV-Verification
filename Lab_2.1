@@ -1,0 +1,102 @@
+// run_phase() is the main phase where the testbench performs the actual test
+override void run_phase(uvm_phase phase) {
+
+    // Call the run_phase() of the parent/base class
+    super.run_phase(phase);
+
+    // Tell UVM:
+    // "The test is running, so don't end the simulation yet."
+    phase.raise_objection(this);
+
+
+    // Create an array of 4 unsigned 8-bit values.
+    // These are the input data that we want to send to the DUT.
+    //
+    // data[0] = 0x42
+    // data[1] = 0x23
+    // data[2] = 0x12
+    // data[3] = 0x02
+    ubyte[] data = [0x42, 0x23, 0x12, 0x02];
+
+
+    // Loop through all the elements of the data array.
+    //
+    // data.length = 4
+    // Therefore:
+    // i = 0 → 0x42
+    // i = 1 → 0x23
+    // i = 2 → 0x12
+    // i = 3 → 0x02
+    for (int i = 0; i != data.length; ++i) {
+
+
+        // Keep waiting if:
+        // 1. DUT is NOT ready (ready = 0), OR
+        // 2. Reset is active (areset = 1)
+        //
+        // We should send data only when:
+        // ready = 1 AND reset = 0
+        while (axis_in.ready == 0 || axis_in.areset == 1) {
+
+            // Wait for the next negative edge of the clock.
+            wait (axis_in.aclk.negedge());
+
+            // No valid data is being sent while waiting.
+            axis_in.last = false;
+            axis_in.valid = false;
+        }
+
+
+        // DUT is now ready and reset is inactive.
+        // Wait for the next negative clock edge before
+        // putting the data on the interface.
+        wait (axis_in.aclk.negedge());
+
+
+        // Put the current data value on the DUT's data input.
+        //
+        // For example:
+        // i = 0 → axis_in.data = 0x42
+        // i = 1 → axis_in.data = 0x23
+        // i = 2 → axis_in.data = 0x12
+        // i = 3 → axis_in.data = 0x02
+        axis_in.data = cast (ubyte) data[i];
+
+
+        // Check whether this is the LAST element of the array.
+        //
+        // If i is the last index (3), tell the DUT:
+        // "This is the final piece of data."
+        if (i == data.length-1)
+            axis_in.last = true;
+        else
+            axis_in.last = false;
+
+
+        // Tell the DUT that the data currently on the
+        // data bus is VALID.
+        axis_in.valid = true;
+    }
+
+
+    // All four data values have now been sent.
+    // Wait for one more clock edge.
+    wait (axis_in.aclk.negedge());
+
+
+    // Transmission is finished.
+    // Clear the LAST and VALID signals.
+    axis_in.last = false;
+    axis_in.valid = false;
+
+
+    // Wait for 100 nanoseconds.
+    // This gives the DUT some time to finish processing
+    // and produce its output.
+    wait(100.nsec);
+
+
+    // Tell UVM:
+    // "The test is finished. The simulation can now end."
+    phase.drop_objection(this);
+}
