@@ -1,0 +1,113 @@
+override void run_phase(uvm_phase phase) {
+    // Override the run_phase() function of the parent UVM component.
+    // This is where the monitor continuously observes the DUT/interface.
+
+    import std.format: format;
+    // Import D's format() function for creating formatted strings.
+
+    super.run_phase(phase);
+    // Call the run_phase() of the parent class.
+    // Similar idea to: Parent::run_phase(phase) in C++.
+
+
+    while (true) {
+        // Infinite loop.
+        // Monitor keeps checking the AXI interface throughout simulation.
+
+
+        wait (axis.aclk.posedge());
+        // Wait until the next POSITIVE/RISING edge of the clock.
+        // The monitor checks the interface on every rising clock edge.
+
+
+        if (axis.areset == 1 ||
+            axis.ready == 0 || axis.valid == 0)
+
+            // Ignore this clock cycle if ANY of these is true:
+            //
+            // 1. areset == 1  → Reset is active
+            // 2. ready  == 0  → Receiver/DUT is not ready
+            // 3. valid  == 0  → Sender does not have valid data
+            //
+            // So, data is captured only when:
+            // reset = 0 AND ready = 1 AND valid = 1
+
+            continue;
+            // Skip the rest of this loop iteration
+            // and go back to the next clock edge.
+
+
+        else {
+            // This means:
+            // areset = 0
+            // ready  = 1
+            // valid  = 1
+            //
+            // Therefore, a valid AXI transfer is happening.
+
+
+            axis_item item =
+                axis_item.type_id.create(
+                    get_full_name() ~ ".axis_item"
+                );
+            // Create a new axis_item transaction using the UVM Factory.
+            //
+            // get_full_name() gives the monitor's full UVM name.
+            // "~" is D's string concatenation operator.
+            //
+            // Similar basic idea in C++:
+            // axis_item* item = new axis_item();
+
+
+            item.data = axis.data;
+            // Copy the data from the AXI interface
+            // into the transaction.
+            //
+            // DUT/interface  →  transaction
+            // axis.data      →  item.data
+
+
+            item.last = cast(bool) axis.last;
+            // Copy the LAST signal into the transaction.
+            //
+            // cast(bool) converts axis.last into a Boolean value.
+            //
+            // axis.last = 1 → item.last = true
+            // axis.last = 0 → item.last = false
+
+
+            uvm_info(
+                "AXIS: ITEM",
+                format("\n%s", item.sprint()),
+                UVM_NONE
+            );
+            // Print the captured transaction in the simulation log.
+            //
+            // item.sprint() converts the item into a printable string.
+            // format() formats that string.
+            // uvm_info() displays it as a UVM message.
+        }
+    }
+
+            DUT / AXI Interface
+              │
+              │ axis.data
+              ↓
+      ┌─────────────────┐
+      │     MONITOR     │
+      │                 │
+      │ axis.data       │
+      │ axis.last       │
+      └────────┬────────┘
+               │
+               ↓
+        axis_item item
+        ┌──────────────┐
+        │ data = ...   │
+        │ last = ...   │
+        └──────────────┘
+               │
+               ↓
+        UVM verification
+        (scoreboard etc.)
+}
